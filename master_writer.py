@@ -1,13 +1,10 @@
 import json
 import os
-import types
+import nbformat as nbf
 
 from onshape_client.client import Client
-from onshape_client.onshape_url import OnshapeElement
-
 from API_generator import generate_api, clean_url
 
-import nbformat as nbf
 
 # Setup Onshape Client with API keys
 base = 'https://cad.onshape.com'
@@ -30,14 +27,7 @@ response = client.api_client.request(method='GET',
                                      body={})
 openApi = json.loads(response.data)
 
-# Test out the functions
-"""
-endpoint = '/partstudios/d/{did}/{wvm}/{wvmid}/e/{eid}/features' 
-call_type = 'post' 
-api_py = generate_api(openApi, endpoint, call_type)
-"""
-
-########################### Start writing a Jupyter notebook ###############################
+###################### Start writing the Jupyter notebook #########################
 nb = nbf.v4.new_notebook()  # the notebook 
 cells = []  # the cells in the notebook (ordered -> use append())
 
@@ -152,11 +142,11 @@ for endpoint in endpoints:
         try: 
             cells.append(nbf.v4.new_code_cell('''{}'''.format(generate_api(openApi, endpoint, typ))))
         except: 
-            print(endpoint, typ)
+            print("Error encountered for endpoint:", endpoint, typ)
 
 
 # Write all the cells in a Jupyter notebook 
-nb["cells"] = cells 
+nb["cells"] = cells  # add cells to notebook 
 with open("API_Snippets.ipynb", 'w') as f: 
-    nbf.write(nb, f)
+    nbf.write(nb, f)  # write the notebook 
 print("Notebook created successfully!")

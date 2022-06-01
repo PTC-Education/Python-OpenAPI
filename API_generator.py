@@ -77,7 +77,7 @@ def print_request_body(openApi: Dict, api_path: str, api_type="post") -> str:
     output_format = '''# The following is the template of the request body of this API endpoint:'''
     if 'description' in openApi['paths'][api_path][api_type]['requestBody']: 
         output_format += '''
-# Description: {}'''.format(openApi['paths'][api_path][api_type]['requestBody']['description'])
+# Description: {}'''.format(openApi['paths'][api_path][api_type]['requestBody']['description'].replace('\n', ' '))
 
     # Look for specific data type 
     header = list(openApi['paths'][api_path][api_type]['requestBody']['content'].keys())[0]
@@ -99,6 +99,7 @@ def print_request_body(openApi: Dict, api_path: str, api_type="post") -> str:
 """
 {}
 """
+
         '''.format(json.dumps(request_body, indent=4, sort_keys=True))
     # No schema used 
     else: 
@@ -154,12 +155,11 @@ def generate_api(openApi: Dict, api_path: str, api_type: str) -> str:
     func_tag = openApi['paths'][api_path][api_type]['tags'][0]
     func_name = openApi['paths'][api_path][api_type]['operationId']
     if 'summary' in openApi['paths'][api_path][api_type]:  
-        func_descrip = openApi['paths'][api_path][api_type]['summary']
+        func_descrip = openApi['paths'][api_path][api_type]['summary'].replace('\n', ' ')
     else: 
         func_descrip = ""
 
-    func_format = '''
-#@title Function `{}()` (type `{}`)
+    func_format = '''#@title Function `{}()` (type `{}`)
 #@markdown {}
 #@markdown More details can be found in https://cad.onshape.com/glassworks/explorer/#/{}/{}
 def {}(client=client): 
@@ -176,7 +176,7 @@ def {}(client=client):
     # Query parameters 
     if 'parameters' in openApi['paths'][api_path][api_type]: 
         params = openApi['paths'][api_path][api_type]['parameters']
-        for param in params: 
+        for param in params:     
             if param['name'] not in ["did", 'wvmid', 'wvid', 'wid', 'eid', 'wvm', 'wv']:  # already addressed with the URL
                 # Start with the description of the parameter 
                 if "description" in param: 
@@ -190,23 +190,27 @@ def {}(client=client):
                     func_format += '''(Required): '''
                 else: 
                     func_format += '''(Optional): '''
-                # Format the paramter with its required data type, or its default value if available 
-                if "default" in param["schema"]: 
-                    if param['schema']['type'] == 'string': 
-                        func_format += '''
-    {} = '{}' #@param {{"type": '{}'}}'''.format(param["name"], param["schema"]["default"], param["schema"]["type"])
-                    else:
-                        func_format += '''
-    {} = {} #@param {{"type": '{}'}}'''.format(param["name"], param["schema"]["default"], param["schema"]["type"])
+                if param['name'] == "If-None-Match":  # a special case (- causes error in python)
+                    func_format += '''
+    If_None_Match = '' #@param{"type": "string"}'''
                 else: 
-                    if param["schema"]["type"] == "string": 
-                        func_format += '''
+                    # Format the paramter with its required data type, or its default value if available 
+                    if "default" in param["schema"]: 
+                        if param['schema']['type'] == 'string': 
+                            func_format += '''
+    {} = '{}' #@param {{"type": '{}'}}'''.format(param["name"], param["schema"]["default"], param["schema"]["type"])
+                        else:
+                            func_format += '''
+    {} = {} #@param {{"type": '{}'}}'''.format(param["name"], param["schema"]["default"], param["schema"]["type"])
+                    else: 
+                        if param["schema"]["type"] == "string": 
+                            func_format += '''
     {} = "" #@param {}'''.format(param["name"], param["schema"])
-                    elif param["schema"]["type"] == "number": 
-                        func_format += '''
+                        elif param["schema"]["type"] == "number": 
+                            func_format += '''
     {} = 0 #@param {}'''.format(param["name"], param["schema"])
-                    else:  # Colab doesn't take some data types as a field type (e.g., array)
-                        func_format += '''
+                        else:  # Colab doesn't take some data types as a field type (e.g., array)
+                            func_format += '''
     #@markdown (Data type: {})
     {} = None #@param {{'type': 'raw'}}'''.format(param["schema"], param["name"])
                 # Add extra components to the cleaned_url (e.g., feature ID)
@@ -218,7 +222,7 @@ def {}(client=client):
     else: 
         params = None 
         func_format += '''
-    No parameters. '''
+    # No parameters. '''
     
     # Putting all parameters together for the API call (only include if not None)
     func_format += '''
@@ -227,12 +231,17 @@ def {}(client=client):
     if params:  # only if there are parameters 
         for param in params: 
             if "id" not in param["name"] and param['name'] != "wvm" and param['name'] != 'wv': 
-                if param["schema"]["type"] != "boolean": 
+                if param['name'] == "If-None-Match":  # a special case 
                     func_format += '''
+    if If_None_Match: 
+        params["If-None-Match"] = If_None_Match'''
+                else: 
+                    if param["schema"]["type"] != "boolean": 
+                        func_format += '''
     if {}: 
         params["{}"] = {}'''.format(param["name"], param["name"], param["name"])
-                else: 
-                    func_format += '''
+                    else: 
+                        func_format += '''
     params["{}"] = {}'''.format(param["name"], param["name"])
     
     # Headers 
