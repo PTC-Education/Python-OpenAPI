@@ -89,23 +89,23 @@ cells.append(nbf.v4.new_code_cell('''#@title Import and run these helper functio
 def clean_url(url: str, fixed_url: str) -> str: 
     element = OnshapeElement(url)
     base = element.base_url 
-    if '{{did}}' in fixed_url: 
-        fixed_url = fixed_url.replace('{{did}}', element.did)
+    if '{did}' in fixed_url: 
+        fixed_url = fixed_url.replace('{did}', element.did)
 
-    if '{{wvm}}' in fixed_url: 
-        fixed_url = fixed_url.replace('{{wvm}}', element.wvm)
-    elif '{{wv}}' in fixed_url: 
-        fixed_url = fixed_url.replace('{{wv}}', element.wvm)
+    if '{wvm}' in fixed_url: 
+        fixed_url = fixed_url.replace('{wvm}', element.wvm)
+    elif '{wv}' in fixed_url: 
+        fixed_url = fixed_url.replace('{wv}', element.wvm)
 
-    if '{{wvmid}}' in fixed_url: 
-        fixed_url = fixed_url.replace('{{wvmid}}', element.wvmid)
-    elif '{{wvid}}' in fixed_url: 
-        fixed_url = fixed_url.replace('{{vwid}}', element.wvmid)
-    elif '{{wid}}' in fixed_url: 
-        fixed_url = fixed_url.replace('{{wid}}', element.wvmid)
+    if '{wvmid}' in fixed_url: 
+        fixed_url = fixed_url.replace('{wvmid}', element.wvmid)
+    elif '{wvid}' in fixed_url: 
+        fixed_url = fixed_url.replace('{vwid}', element.wvmid)
+    elif '{wid}' in fixed_url: 
+        fixed_url = fixed_url.replace('{wid}', element.wvmid)
 
-    if '{{eid}}' in fixed_url: 
-        fixed_url = fixed_url.replace('{{eid}}', element.eid)
+    if '{eid}' in fixed_url: 
+        fixed_url = fixed_url.replace('{eid}', element.eid)
 
     return base + "/api" + fixed_url 
 '''))
