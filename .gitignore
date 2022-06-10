@@ -130,6 +130,7 @@ dmypy.json
 
 # MacOS 
 .DS_Store
+.idea 
 
 # Onshape API keys 
 OnshapeAPIKey.py

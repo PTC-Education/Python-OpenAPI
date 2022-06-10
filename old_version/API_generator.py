@@ -74,10 +74,10 @@ def print_request_body(openApi: Dict, api_path: str, api_type="post") -> str:
     It is meant to be used as a reference for the users, where more info can be found online. 
     """
     # General common description 
-    output_format = ""
+    output_format = '''# The following is the template of the request body of this API endpoint:'''
     if 'description' in openApi['paths'][api_path][api_type]['requestBody']: 
         output_format += '''
-                Description: {}'''.format(openApi['paths'][api_path][api_type]['requestBody']['description'].replace('\n', ' '))
+# Description: {}'''.format(openApi['paths'][api_path][api_type]['requestBody']['description'].replace('\n', ' '))
 
     # Look for specific data type 
     header = list(openApi['paths'][api_path][api_type]['requestBody']['content'].keys())[0]
@@ -96,12 +96,16 @@ def print_request_body(openApi: Dict, api_path: str, api_type="post") -> str:
             request_body = copy.deepcopy(openApi['components']['schemas'][body_address]['properties'])
         request_body = clean_request_body(openApi, request_body, used_address)
         output_format += '''
+"""
 {}
+"""
+
         '''.format(json.dumps(request_body, indent=4, sort_keys=True))
     # No schema used 
     else: 
         output_format += '''
-                The request body for this API endpoint is a {}'''.format(schema['type'])
+# The request body for this API endpoint is a {}
+        '''.format(schema['type'])
     
     return output_format
 
@@ -117,141 +121,158 @@ def generate_api(openApi: Dict, api_path: str, api_type: str) -> str:
     """
     api_path = api_path.strip()
     api_type = api_type.strip().lower()
-    required = {True: "Required", False: "Optional"}
 
-    # Body 
-    try: 
-        if 'required' in openApi['paths'][api_path][api_type]['requestBody']: 
-            body_arg = 'payload'
-        else: 
-            body_arg = 'payload={}'
-    except KeyError: 
-        body_arg = 'payload={}'
-
-    # Description 
+    # Info about the API endpoint for labelling 
     func_tag = openApi['paths'][api_path][api_type]['tags'][0]
     func_name = openApi['paths'][api_path][api_type]['operationId']
-    if 'summary' in openApi['paths'][api_path][api_type]: 
+    if 'summary' in openApi['paths'][api_path][api_type]:  
         func_descrip = openApi['paths'][api_path][api_type]['summary'].replace('\n', ' ')
     else: 
         func_descrip = ""
-    func_intro = '''#@title `{}` (type `{}`)
-def {}(client, url, {}, params={{}}, show_response=False): 
-    """
-    API call type: `{}`
-    {}
-    More details can be found in https://cad.onshape.com/glassworks/explorer/#/{}/{}
 
-    - `client` (Required): the Onshape client configured with your API keys
-    - `url` (Required): the url of the Onshape document you would like to make this API call to'''.format(
-        func_name, api_type.upper(), func_name, body_arg, 
-        api_type.upper(), func_descrip, func_tag, func_name)
-    
-    # Start defining the function 
-    func_code = '''
-    method = "{}" '''.format(api_type.upper())
+    func_format = '''#@title Function `{}()` (type `{}`)
+#@markdown {}
+#@markdown More details can be found in https://cad.onshape.com/glassworks/explorer/#/{}/{}
+def {}(client=client): 
+    method = "{}"
+    '''.format(func_name, api_type.upper(), func_descrip, func_tag, func_name, func_name, api_type.upper())
 
     # URL path 
-    func_code += '''
-    element = OnshapeElement(url)
-    base = element.base_url
-    fixed_url = "{}"'''.format(api_path)
-    
-    # Query parameters     
-    if 'parameters' in openApi['paths'][api_path][api_type]: 
-        func_intro += '''
-    - `params`: a dictionary of the following parameters for the API call'''
-        params = openApi['paths'][api_path][api_type]['parameters']
-        for param in params: 
-            if param['in'] == "path": 
-                if param['name'] == 'did': 
-                    func_code += '''
-    fixed_url = fixed_url.replace('{did}', element.did)'''
-                elif param['name'] == 'wvm' or param['name'] == 'wv': 
-                    func_code += '''
-    fixed_url = fixed_url.replace('{{{}}}', element.wvm)'''.format(param['name'])
-                elif param['name'] in ['wvmid', 'wvid', 'wid']: 
-                    func_code += '''
-    fixed_url = fixed_url.replace('{{{}}}', element.wvmid)'''.format(param['name'])
-                elif param['name'] == 'eid': 
-                    func_code += '''
-    fixed_url = fixed_url.replace('{eid}', element.eid)'''
-                else: 
-                    func_code += '''
-    fixed_url = fixed_url.replace('{{{}}}', params["{}"])
-    del params["{}"]'''.format(param["name"], param["name"], param["name"])
-                    if 'description' in param: 
-                        func_intro += '''
-        - `{}` (Required): {}'''.format(param['name'], param['description'].replace('\n', ' '))
-                    else: 
-                        func_intro += '''
-        - `{}` (Required)'''.format(param['name'])
-            else:
-                if param['name'] == 'If-None-Match':  # special case
-                    func_intro += '''
-        - `If-None-Match`: string'''
-                else: 
-                    if 'description' in param: 
-                        param_descrip = ": " + param['description']
-                    else: 
-                        param_descrip = "" 
-                    if 'default' in param['schema']: 
-                        param_default = "(default: " + str(param['schema']['default']) + ')'
-                    else: 
-                        param_default = ''
-                    func_intro += '''
-        - `{}`: {} ({}){} {}'''.format(param['name'], 
-                                    param['schema']['type'], 
-                                    required['required' in param], 
-                                    param_descrip, 
-                                    param_default)
-    else: 
-        func_intro += '''
-    - `params={}`: no params accepted for this API call. '''
-            
-    # Body 
-    if api_type == 'post' and 'requestBody' in openApi['paths'][api_path][api_type]: 
-        func_intro += '''
-    - `payload` ({}): a dictionary of the payload body of this API call; a template of the body is shown below: {}'''.format(
-        required['required' in openApi['paths'][api_path][api_type]['requestBody']], print_request_body_func(openApi, api_path))
-    else: 
-        func_intro += '''
-    - `payload={}`: no payload body is accepted for this API call'''
+    func_format += '''
+    #@markdown Copy and paste the URL of the Onshape document (Required): 
+    url = "" #@param{{type: "string"}}
+    cleaned_url = clean_url(url, '{}')
+    '''.format(api_path)
 
+    # Query parameters 
+    if 'parameters' in openApi['paths'][api_path][api_type]: 
+        params = openApi['paths'][api_path][api_type]['parameters']
+        for param in params:     
+            if param['name'] not in ["did", 'wvmid', 'wvid', 'wid', 'eid', 'wvm', 'wv']:  # already addressed with the URL
+                # Start with the description of the parameter 
+                if "description" in param: 
+                    func_format += '''
+    #@markdown {} '''.format(param["description"].replace('\n', ' '))
+                else: 
+                    func_format += '''
+    #@markdown '''
+                # If this parameter is required 
+                if "required" in param: 
+                    func_format += '''(Required): '''
+                else: 
+                    func_format += '''(Optional): '''
+                if param['name'] == "If-None-Match":  # a special case (- causes error in python)
+                    func_format += '''
+    If_None_Match = '' #@param{"type": "string"}'''
+                else: 
+                    # Format the paramter with its required data type, or its default value if available 
+                    if "default" in param["schema"]: 
+                        if param['schema']['type'] == 'string': 
+                            func_format += '''
+    {} = '{}' #@param {{"type": '{}'}}'''.format(param["name"], param["schema"]["default"], param["schema"]["type"])
+                        else:
+                            func_format += '''
+    {} = {} #@param {{"type": '{}'}}'''.format(param["name"], param["schema"]["default"], param["schema"]["type"])
+                    else: 
+                        if param["schema"]["type"] == "string": 
+                            func_format += '''
+    {} = "" #@param {}'''.format(param["name"], param["schema"])
+                        elif param["schema"]["type"] == "number": 
+                            func_format += '''
+    {} = 0 #@param {}'''.format(param["name"], param["schema"])
+                        else:  # Colab doesn't take some data types as a field type (e.g., array)
+                            func_format += '''
+    #@markdown (Data type: {})
+    {} = None #@param {{'type': 'raw'}}'''.format(param["schema"], param["name"])
+                # Add extra components to the cleaned_url (e.g., feature ID)
+                if param["in"] == "path": 
+                    func_format += '''
+    cleaned_url.replace('{{{}}}', {})
+                    '''.format(param["name"], param["name"])
+    # If no parameters is required 
+    else: 
+        params = None 
+        func_format += '''
+    # No parameters. '''
+    
+    # Putting all parameters together for the API call (only include if not None)
+    func_format += '''
+
+    params = {}'''
+    if params:  # only if there are parameters 
+        for param in params: 
+            if "id" not in param["name"] and param['name'] != "wvm" and param['name'] != 'wv': 
+                if param['name'] == "If-None-Match":  # a special case 
+                    func_format += '''
+    if If_None_Match: 
+        params["If-None-Match"] = If_None_Match'''
+                else: 
+                    if param["schema"]["type"] != "boolean": 
+                        func_format += '''
+    if {}: 
+        params["{}"] = {}'''.format(param["name"], param["name"], param["name"])
+                    else: 
+                        func_format += '''
+    params["{}"] = {}'''.format(param["name"], param["name"])
+    
     # Headers 
     if 'default' in openApi['paths'][api_path][api_type]['responses']: 
         if list(openApi['paths'][api_path][api_type]['responses']['default']['content'].keys()): 
-            func_code += '''
+            func_format += '''
+    
     headers = {{"Accept": "{}", "Content-Type": "application/json"}}
             '''.format(list(openApi['paths'][api_path][api_type]['responses']['default']['content'].keys())[0])
         else: 
-            func_code += '''
-    headers = {{}}
-            '''.format(None)
+            func_format += '''
+            
+    headers = {}
+            '''
     elif '200' in openApi['paths'][api_path][api_type]['responses']: 
         if 'content' in openApi['paths'][api_path][api_type]['responses']['200']: 
-            func_code += '''
+            func_format += '''
+            
     headers = {{"Accept": "{}", "Content-Type": "application/json"}}
             '''.format(list(openApi['paths'][api_path][api_type]['responses']['200']['content'].keys())[0])
         else: 
-            func_code += '''
-    headers = {{}}
-            '''.format(None)
+            func_format += '''
+            
+    headers = {} 
+            '''
     else: 
-        func_code += '''
-    headers = {{}}
-        '''.format(None)
+        func_format += '''
+        
+    headers = {}
+        '''
+
+    # Body 
+    # Only required for certain "POST" calls 
+    if api_type == 'post' and 'requestBody' in openApi['paths'][api_path][api_type]: 
+        body_type = {True: "Required", False: "Optional"}
+        func_format += '''
+    #@markdown Define payload or modify the template `requestBody` above ({})
+    payload = None #@param{{'type': 'raw'}}
+        '''.format(body_type['required' in openApi['paths'][api_path][api_type]['requestBody']])
+        body_output = print_request_body(openApi, api_path)  # the template on top of the actual function 
+    # No payload is required for "GET" and "DELETE" calls 
+    else: 
+        body_output = None 
+        func_format += '''
+    payload = {}
+        '''
     
     # Make the call 
-    func_code += '''
-    response = client.api_client.request(method, url=base + fixed_url, query_params=params, headers=headers, body=payload)
+    func_format += '''
+    response = client.api_client.request(method, url=cleaned_url, query_params=params, headers=headers, body=payload)
     parsed = json.loads(response.data)
+    
+    #@markdown Do you want to print out the response of this API call? 
+    show_response = False #@param {'type': 'boolean'}
     if show_response: 
         print(json.dumps(parsed, indent=4, sort_keys=True)) 
+    
     return parsed 
-    '''.format(None)
+    '''
 
-    output = func_intro + '''
-    - `show_response`: boolean: do you want to print out the response of this API call (default: False)
-    """'''+ func_code 
-    return output
+    if body_output: 
+        func_format = body_output + func_format
+    return func_format 
