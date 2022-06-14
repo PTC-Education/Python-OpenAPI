@@ -155,7 +155,7 @@ def {}(client, url, {}, params={{}}, show_response=False):
     func_code += '''
     element = OnshapeElement(url)
     base = element.base_url
-    fixed_url = "{}"'''.format(api_path)
+    fixed_url = "/api{}"'''.format(api_path)
     
     # Query parameters     
     if 'parameters' in openApi['paths'][api_path][api_type]: 
@@ -213,7 +213,7 @@ def {}(client, url, {}, params={{}}, show_response=False):
     if api_type == 'post' and 'requestBody' in openApi['paths'][api_path][api_type]: 
         func_intro += '''
     - `payload` ({}): a dictionary of the payload body of this API call; a template of the body is shown below: {}'''.format(
-        required['required' in openApi['paths'][api_path][api_type]['requestBody']], print_request_body_func(openApi, api_path))
+        required['required' in openApi['paths'][api_path][api_type]['requestBody']], print_request_body(openApi, api_path))
     else: 
         func_intro += '''
     - `payload={}`: no payload body is accepted for this API call'''
