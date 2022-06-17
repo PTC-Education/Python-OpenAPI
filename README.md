@@ -1,5 +1,5 @@
 # Onshape Open API in Python Snippets
-This repository stores the method to auto-generate all the REST API endpoints for Onshape (in Python snippets). The official documentation of all API endpoints can be found [here](https://cad.onshape.com/glassworks/explorer/#/). 
+This repository stores the method to auto-generate all the REST API endpoints for Onshape (in Python snippets). Please note that this repository is not at production quality, and it is only meant to serve as a reference. To learn the basics of API calls, please see [this guide](https://github.com/PTC-Education/Onshape-Integration-Guides/blob/main/API_Intro.md). The official documentation of all API endpoints can be found [here](https://cad.onshape.com/glassworks/explorer/#/). 
 
 To use the Python snippets in Jupyter notebooks, we recommend coding in Google Colab and follow the steps below to import the snippets to your own notebook: 
 
