@@ -167,10 +167,10 @@ def {}(client, url, {}, params={{}}, show_response=False):
                 if param['name'] == 'did': 
                     func_code += '''
     fixed_url = fixed_url.replace('{did}', element.did)'''
-                elif param['name'] == 'wvm' or param['name'] == 'wv': 
+                elif param['name'] in ['wvm', 'wv', 'wm']: 
                     func_code += '''
     fixed_url = fixed_url.replace('{{{}}}', element.wvm)'''.format(param['name'])
-                elif param['name'] in ['wvmid', 'wvid', 'wid']: 
+                elif param['name'] in ['wvmid', 'wvid', 'wmid', 'wid']: 
                     func_code += '''
     fixed_url = fixed_url.replace('{{{}}}', element.wvmid)'''.format(param['name'])
                 elif param['name'] == 'eid': 
